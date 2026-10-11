@@ -1,0 +1,336 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulasi Teknik Mesin</title>
+<style>
+:root {
+  --bg:#06111f; --panel:#0c1c30; --line:#234464;
+  --blue:#36a4ff; --cyan:#55d8ff; --orange:#ffb33e;
+  --text:#e4f2ff; --muted:#91abc6;
+}
+* {box-sizing:border-box}
+body {
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,Arial,sans-serif;
+}
+header {
+  padding:22px 18px;border-bottom:1px solid var(--line);
+  background:#0a1a2e;
+}
+h1 {font-size:clamp(20px,4vw,30px);margin:0 0 6px}
+p {line-height:1.6}
+.sub,.muted {color:var(--muted);font-size:13px}
+main {padding:14px;max-width:1450px;margin:auto}
+.layout {display:grid;grid-template-columns:270px minmax(0,1fr);gap:14px}
+.panel {
+  background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:16px;margin-bottom:14px;
+  min-width:0;
+}
+h2 {font-size:16px;margin:0 0 14px;color:var(--cyan)}
+h3 {font-size:14px;margin:18px 0 10px}
+label {display:block;font-size:13px;margin:12px 0 6px}
+input {
+  width:100%;padding:10px;border-radius:7px;
+  border:1px solid var(--line);background:#071426;
+  color:white;font-size:15px;
+}
+.unit {font-size:12px;color:var(--muted)}
+.field {display:grid;grid-template-columns:1fr 95px;gap:8px;align-items:center}
+button {
+  border:1px solid var(--line);padding:12px;border-radius:8px;
+  background:#142b45;color:white;cursor:pointer;font-weight:600;
+}
+button.primary {background:#147ce5;border-color:#147ce5}
+button:active {transform:scale(.98)}
+.actions {display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}
+.results {display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.metric {
+  border:1px solid var(--line);background:#09182a;
+  border-radius:10px;padding:14px;min-width:0;
+}
+.metric small {color:var(--muted);display:block;margin-bottom:8px}
+.metric strong {font-size:clamp(15px,2vw,22px);overflow-wrap:anywhere}
+.pipe-wrap {padding:8px 0;overflow:hidden}
+svg {width:100%;display:block}
+.pipe {fill:#142f4b;stroke:#8fa9c5;stroke-width:2}
+.fluid {fill:#1688df;opacity:.65}
+.particle {fill:var(--orange);animation:flow 2.8s linear infinite}
+.arrow {stroke:white;stroke-width:2;fill:none}
+@keyframes flow {from{transform:translateX(-35px)}
+to{transform:translateX(35px)}}
+.graph {width:100%;height:240px;display:block}
+.gridline {stroke:#29445e;stroke-width:1}
+.axis {stroke:#8fa9c5;stroke-width:1}
+.curve {fill:none;stroke:var(--blue);stroke-width:3}
+.curve2 {fill:none;stroke:var(--orange);stroke-width:3}
+.note {font-size:13px;color:var(--muted);line-height:1.7}
+.formula {
+  background:#071426;border-radius:8px;padding:12px;
+  margin:10px 0;font-family:serif;font-size:17px;overflow-wrap:anywhere
+}
+.bottom {display:grid;grid-template-columns:1fr 1fr;gap:14px}
+footer {padding:20px;text-align:center;color:var(--muted);font-size:12px}
+@media(max-width:800px) {
+  .layout {grid-template-columns:1fr}
+  .results {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bottom {grid-template-columns:1fr}
+  main {padding:9px}
+  header {padding:18px 12px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Simulasi Komposisi Fluida & Hukum Bernoulli</h1>
+  <div class="sub">ENGINEERING LAB · FLUID MECHANICS · SI UNITS</div>
+</header>
+
+<main>
+<div class="layout">
+
+<!-- INPUT PARAMETER -->
+<section class="panel">
+<h2>Parameter Simulasi</h2>
+
+<h3>01 / Komposisi Fluida</h3>
+<label>Fraksi air (%)</label>
+<input id="fw" type="number" value="70" min="0" max="100" step="1">
+<label>Fraksi minyak (%)</label>
+<input id="fo" type="number" value="30" min="0" max="100" step="1">
+<label>Massa jenis air (kg/m³)</label>
+<input id="rw" type="number" value="1000" min="1">
+<label>Massa jenis minyak (kg/m³)</label>
+<input id="ro" type="number" value="850" min="1">
+
+<h3>02 / Geometri Pipa</h3>
+<label>Diameter masuk D₁ (mm)</label>
+<input id="d1" type="number" value="100" min="1" step="1">
+<label>Diameter keluar D₂ (mm)</label>
+<input id="d2" type="number" value="50" min="1" step="1">
+<label>Debit Q (L/s)</label>
+<input id="q" type="number" value="1" min="0.001" step="0.1">
+
+<h3>03 / Kondisi Awal</h3>
+<label>Tekanan masuk P₁ (kPa)</label>
+<input id="p1" type="number" value="200" step="1">
+<label>Ketinggian masuk z₁ (m)</label>
+<input id="z1" type="number" value="0" step="0.1">
+<label>Ketinggian keluar z₂ (m)</label>
+<input id="z2" type="number" value="0.5" step="0.1">
+
+<div class="actions">
+<button class="primary" onclick="simulate()">▶ Simulasikan</button>
+<button onclick="resetAll()">↻ Reset</button>
+</div>
+<p class="note">Hasil diperbarui saat tombol simulasi ditekan. Gunakan nilai positif untuk diameter dan debit.</p>
+</section>
+
+<!-- VISUALISASI -->
+<div>
+<section class="panel">
+<h2>Visualisasi Aliran dalam Nozzle</h2>
+<div class="sub">Penampang pipa berubah dari D₁ ke D₂</div>
+<div class="pipe-wrap">
+<svg viewBox="0 0 700 230" role="img" aria-label="Ilustrasi pipa menyempit dengan aliran fluida">
+<defs>
+  <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#1e91e8"/>
+    <stop offset="1" stop-color="#42d5ff"/>
+  </linearGradient>
+  <clipPath id="inside">
+    <path d="M20 55 L250 55 Q320 55 385 88 L680 88 L680 142 L385 142 Q320 175 250 175 L20 175 Z"/>
+  </clipPath>
+</defs>
+<path class="pipe" d="M20 45 L250 45 Q320 45 385 78 L680 78 L680 152 L385 152 Q320 185 250 185 L20 185 Z"/>
+<path fill="url(#water)" d="M20 55 L250 55 Q320 55 385 88 L680 88 L680 142 L385 142 Q320 175 250 175 L20 175 Z"/>
+<g clip-path="url(#inside)">
+  {#each [] as unused}
+  {/each}
+  <circle class="particle" cx="60" cy="78" r="4"/>
+  <circle class="particle" cx="110" cy="120" r="4" style="animation-delay:-1s"/>
+  <circle class="particle" cx="170" cy="150" r="4" style="animation-delay:-.5s"/>
+  <circle class="particle" cx="230" cy="95" r="4" style="animation-delay:-2s"/>
+  <circle class="particle" cx="300" cy="125" r="4" style="animation-delay:-1.5s"/>
+  <circle class="particle" cx="400" cy="108" r="4" style="animation-delay:-.7s"/>
+  <circle class="particle" cx="500" cy="125" r="4" style="animation-delay:-2.1s"/>
+  <circle class="particle" cx="600" cy="105" r="4" style="animation-delay:-1.2s"/>
+  <path class="arrow" d="M60 115 h45 m-9 -6 l9 6 -9 6"/>
+  <path class="arrow" d="M220 115 h45 m-9 -6 l9 6 -9 6"/>
+  <path class="arrow" d="M430 115 h45 m-9 -6 l9 6 -9 6"/>
+  <path class="arrow" d="M570 115 h45 m-9 -6 l9 6 -9 6"/>
+</g>
+<rect x="12" y="38" width="12" height="154" rx="3" fill="#8fa9c5"/>
+<rect x="680" y="71" width="12" height="88" rx="3" fill="#8fa9c5"/>
+<g fill="currentColor" font-size="14">
+<text x="25" y="25" id="labelD1">D₁ = 100 mm</text>
+<text x="565" y="62" id="labelD2">D₂ = 50 mm</text>
+</g>
+</svg>
+</div>
+<div class="results">
+  <div class="metric"><small>Tekanan masuk</small><strong id="mP1">200 kPa</strong></div>
+  <div class="metric"><small>Kecepatan masuk</small><strong id="mV1">0.127 m/s</strong></div>
+  <div class="metric"><small>Tekanan keluar</small><strong id="mP2">195.2 kPa</strong></div>
+  <div class="metric"><small>Kecepatan keluar</small><strong id="mV2">0.509 m/s</strong></div>
+</div>
+</section>
+
+<section class="panel">
+<h2>Hasil Perhitungan</h2>
+<div class="results">
+  <div class="metric"><small>Massa jenis campuran</small><strong id="rho">955 kg/m³</strong></div>
+  <div class="metric"><small>Luas masuk</small><strong id="a1">0.007854 m²</strong></div>
+  <div class="metric"><small>Luas keluar</small><strong id="a2">0.001963 m²</strong></div>
+  <div class="metric"><small>Penurunan tekanan</small><strong id="dp">4.8 kPa</strong></div>
+</div>
+<p class="note" id="status">Model ideal: tekanan dan kecepatan dihitung dari persamaan kontinuitas serta Bernoulli.</p>
+</section>
+
+<div class="bottom">
+<section class="panel">
+<h2>Grafik Kecepatan vs Posisi</h2>
+<svg id="velocityGraph" class="graph" viewBox="0 0 400 230" aria-label="Grafik kecepatan"></svg>
+</section>
+<section class="panel">
+<h2>Grafik Tekanan vs Posisi</h2>
+<svg id="pressureGraph" class="graph" viewBox="0 0 400 230" aria-label="Grafik tekanan"></svg>
+</section>
+</div>
+
+<section class="panel">
+<h2>Persamaan yang Digunakan</h2>
+<h3>1. Massa jenis campuran</h3>
+<div class="formula">ρ = fₐρₐ + fₘρₘ</div>
+<h3>2. Persamaan kontinuitas</h3>
+<div class="formula">Q = Av &nbsp; dan &nbsp; A = πD² / 4</div>
+<h3>3. Hukum Bernoulli</h3>
+<div class="formula">
+P₁ + ½ρv₁² + ρgz₁ = P₂ + ½ρv₂² + ρgz₂
+</div>
+<p class="note">
+ρ = massa jenis (kg/m³); P = tekanan (Pa); v = kecepatan (m/s);
+z = ketinggian (m); g = 9,81 m/s².
+</p>
+</section>
+
+<section class="panel">
+<h2>Catatan Teknik</h2>
+<p class="note">
+• Aliran dianggap tunak dan fluida inkompresibel.<br>
+• Kerugian energi akibat gesekan diabaikan.<br>
+• Massa jenis campuran dihitung dengan pendekatan fraksi volume.<br>
+• Campuran air dan minyak nyata dapat terpisah menjadi dua fase; model ini tidak mensimulasikan interaksi kedua fase.<br>
+• Grafik menunjukkan interpolasi ideal sepanjang nozzle, bukan hasil CFD.
+</p>
+</section>
+</div>
+</div>
+</main>
+<footer>SIMULASI EDUKASI · TEKNIK MESIN · MEKANIKA FLUIDA</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const num = id => Number($(id).value);
+
+function fmt(x, digits=3) {
+  return Number.isFinite(x) ? x.toFixed(digits) : "—";
+}
+
+function graph(id, values, color, unit) {
+  const svg = $(id), W=400, H=230;
+  const left=52, right=15, top=15, bottom=38;
+  const pw=W-left-right, ph=H-top-bottom;
+  const valid=values.filter(Number.isFinite);
+  let min=Math.min(...valid), max=Math.max(...valid);
+  if (min===max) { min-=1; max+=1; }
+  const pad=(max-min)*0.12;
+  min-=pad; max+=pad;
+  const X=i=>left+i/(values.length-1)*pw;
+  const Y=v=>top+(max-v)/(max-min)*ph;
+  let out="";
+  for(let i=0;i<=4;i++){
+    let y=top+i*ph/4;
+    let val=max-i*(max-min)/4;
+    out+=`<line class="gridline" x1="${left}" y1="${y}" x2="${W-right}" y2="${y}"/>`;
+    out+=`<text x="${left-7}" y="${y+4}" text-anchor="end" fill="#91abc6" font-size="10">${fmt(val,1)}</text>`;
+  }
+  out+=`<line class="axis" x1="${left}" y1="${top}" x2="${left}" y2="${H-bottom}"/>`;
+  out+=`<line class="axis" x1="${left}" y1="${H-bottom}" x2="${W-right}" y2="${H-bottom}"/>`;
+  const path=values.map((v,i)=>(i?"L":"M")+X(i)+" "+Y(v)).join(" ");
+  out+=`<path d="${path}" fill="none" stroke="${color}" stroke-width="3" stroke-linejoin="round"/>`;
+  out+=`<text x="${W/2}" y="${H-8}" text-anchor="middle" fill="#91abc6" font-size="11">Posisi sepanjang pipa (%)</text>`;
+  out+=`<text x="12" y="${H/2}" transform="rotate(-90 12 ${H/2})" text-anchor="middle" fill="#91abc6" font-size="11">${unit}</text>`;
+  svg.innerHTML=out;
+}
+
+function simulate() {
+  const fw=num("fw")/100, fo=num("fo")/100;
+  const rw=num("rw"), ro=num("ro");
+  const D1=num("d1")/1000, D2=num("d2")/1000;
+  const Q=num("q")/1000, P1=num("p1")*1000;
+  const z1=num("z1"), z2=num("z2"), g=9.81;
+
+  if (![fw,fo,rw,ro,D1,D2,Q,P1,z1,z2].every(Number.isFinite) ||
+      fw<0 || fo<0 || Math.abs(fw+fo-1)>0.001 ||
+      rw<=0 || ro<=0 || D1<=0 || D2<=0 || Q<=0) {
+    $("status").textContent =
+      "Input tidak valid. Pastikan fraksi komposisi berjumlah 100%, diameter dan debit positif, serta massa jenis lebih besar dari nol.";
+    return;
+  }
+
+  const rho=fw*rw+fo*ro;
+  const A1=Math.PI*D1**2/4, A2=Math.PI*D2**2/4;
+  const v1=Q/A1, v2=Q/A2;
+  const P2=P1+0.5*rho*(v1*v1-v2*v2)+rho*g*(z1-z2);
+  const dp=P1-P2;
+
+  $("rho").textContent=fmt(rho,1)+" kg/m³";
+  $("a1").textContent=fmt(A1,6)+" m²";
+  $("a2").textContent=fmt(A2,6)+" m²";
+  $("dp").textContent=fmt(dp/1000,3)+" kPa";
+  $("mP1").textContent=fmt(P1/1000,2)+" kPa";
+  $("mP2").textContent=fmt(P2/1000,2)+" kPa";
+  $("mV1").textContent=fmt(v1,4)+" m/s";
+  $("mV2").textContent=fmt(v2,4)+" m/s";
+  $("labelD1").textContent="D₁ = "+fmt(D1*1000,1)+" mm";
+  $("labelD2").textContent="D₂ = "+fmt(D2*1000,1)+" mm";
+
+  const velocities=[], pressures=[];
+  for(let i=0;i<=100;i++){
+    const t=i/100;
+    const D=D1+(D2-D1)*t;
+    const A=Math.PI*D*D/4;
+    const v=Q/A;
+    const z=z1+(z2-z1)*t;
+    const p=P1+0.5*rho*(v1*v1-v*v)+rho*g*(z1-z);
+    velocities.push(v);
+    pressures.push(p/1000);
+  }
+  graph("velocityGraph",velocities,"#36a4ff","Kecepatan (m/s)");
+  graph("pressureGraph",pressures,"#ffb33e","Tekanan (kPa)");
+
+  $("status").textContent =
+    `Simulasi selesai. Massa jenis ${fmt(rho,1)} kg/m³. `+
+    `Kecepatan ${fmt(v1,4)} → ${fmt(v2,4)} m/s. `+
+    `Tekanan keluar ${fmt(P2/1000,3)} kPa. `+
+    (P2<0 ? "PERINGATAN: tekanan absolut negatif tidak fisik; periksa parameter dan asumsi model."
+    : "Hasil memakai model Bernoulli ideal tanpa kerugian energi.");
+}
+
+function resetAll() {
+  const defaults={
+    fw:70,fo:30,rw:1000,ro:850,
+    d1:100,d2:50,q:1,p1:200,z1:0,z2:0.5
+  };
+  for(const [id,value] of Object.entries(defaults)) $(id).value=value;
+  simulate();
+}
+
+simulate();
+</script>
+</body>
+</html>
